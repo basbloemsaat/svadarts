@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>overzicht speler vs speler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="darts.css">
+    <style>
+    table#overzicht th,
+    td {
+        text-align: center;
+    }
+
+    td.comp {
+        text-align: right;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <a href="index.html">&larr; overzicht</a>
+        <h1 id="title">h2h</h1>
+        <!-- <div class="row">
+            <div class="col-lg-6">
+                <h2>punten</h2>
+                <svg id="punten" class="chart"></svg>
+            </div>
+            <div class="col-lg-6">
+                <h2>rating</h2>
+                <svg id="rating" class="chart"></svg>
+            </div>
+        </div> -->
+        <div class="row">
+            <div class="col-lg-12">
+                <table id="overzicht" class="table table-hover table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th> </th>
+                            <th colspan="5" id="speler1_th">1</th>
+                            <th> vs </th>
+                            <th colspan="5" id="speler2_th">2</th>
+                        </tr>
+                        <tr>
+                            <th> </th>
+                            <th>lollies</th>
+                            <th>100+</th>
+                            <th>180</th>
+                            <th>2-0</th>
+                            <th>2-1</th>
+                            <th>totaal</th>
+                            <th>1-2</th>
+                            <th>0-2</th>
+                            <th>180</th>
+                            <th>100+</th>
+                            <th>lollies</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="./bbdataviz.js"></script>
+    <script src="./dartsapp.js"></script>
+    <script>
+    let p = bbdataviz.url_params();
+    let speler1 = p['speler'];
+    let speler2 = p['opponent'];
+    d3.select('h1#title').text('Overzicht ' + speler1 + ' vs ' + speler2)
+
+
+    d3.select('th#speler1_th').text(speler1)
+    d3.select('th#speler2_th').text(speler2)
+
+    let draw_page = function() {
+        let h2h_games = [];
+        let competitions = [];
+
+        let games = dartsapp.data['spelers'][speler1]['games'];
+        games.forEach(function(g) {
+            if (!competitions.includes(g.comp)) {
+                competitions.push(g.comp);
+            }
+            let game = {
+                'season': g.comp,
+            }
+            if (g.speler1_naam == speler1 && g.speler2_naam == speler2) {
+                game.speler1_naam = g.speler1_naam;
+                game.speler1_180s = g.speler1_180s;
+                game.speler1_finishes = g.speler1_finishes;
+                game.speler1_legs = g.speler1_legs;
+                game.speler1_lollies = g.speler1_lollies;
+
+                game.speler2 = g.speler2_naam;
+                game.speler2_180s = g.speler2_180s;
+                game.speler2_finishes = g.speler2_finishes;
+                game.speler2_legs = g.speler2_legs;
+                game.speler2_lollies = g.speler2_lollies;
+
+                h2h_games.push(game);
+            } else if (g.speler1_naam == speler2 && g.speler2_naam == speler1) {
+                game.speler2_naam = g.speler1_naam;
+                game.speler2_180s = g.speler1_180s;
+                game.speler2_finishes = g.speler1_finishes;
+                game.speler2_legs = g.speler1_legs;
+                game.speler2_lollies = g.speler1_lollies;
+
+                game.speler1 = g.speler2_naam;
+                game.speler1_180s = g.speler2_180s;
+                game.speler1_finishes = g.speler2_finishes;
+                game.speler1_legs = g.speler2_legs;
+                game.speler1_lollies = g.speler2_lollies;
+
+                h2h_games.push(game);
+            }
+        })
+
+        competitions.sort().reverse();
+        const latest_comp = competitions[0];
+
+        let stats_row = {
+            games: 0,
+            speler1_180s: 0,
+            speler1_finishes: '',
+            speler1_lollies: 0,
+            speler1_wins: 0,
+            speler2_180s: 0,
+            speler2_finishes: '',
+            speler2_lollies: 0,
+            speler2_wins: 0,
+            "20": 0,
+            "21": 0,
+            "12": 0,
+            "02": 0,
+        }
+
+        let stats = {
+            'total': JSON.parse(JSON.stringify(stats_row)),
+            'latest': JSON.parse(JSON.stringify(stats_row)),
+            'earlier': JSON.parse(JSON.stringify(stats_row)),
+        }
+
+        stats.total.comp = 'totaal';
+        stats.latest.comp = latest_comp.substr(-9);
+        stats.earlier.comp = 'eerder';
+
+
+        h2h_games.forEach(function(g) {
+
+            let sad = ['total']
+            if (g.season == latest_comp) {
+                sad.push('latest')
+            } else {
+                sad.push('earlier')
+            }
+
+
+            sad.forEach(function(s) {
+                let x = stats[s]
+                x.games++;
+                x.speler1_lollies += g.speler1_lollies;
+                x.speler2_lollies += g.speler2_lollies;
+                x.speler1_180s += g.speler1_180s;
+                x.speler2_180s += g.speler2_180s;
+                if (g.speler1_finishes != 0) { x.speler1_finishes += ',' + g.speler1_finishes; }
+                if (g.speler2_finishes != 0) { x.speler2_finishes += ',' + g.speler2_finishes; }
+
+                if (g.speler1_legs == 2) {
+                    if (g.speler2_legs == 1) {
+                        x['21']++
+                    } else {
+                        x['20']++
+                    }
+                    x.speler1_wins++
+                } else {
+                    if (g.speler1_legs == 1) {
+                        x['12']++
+                    } else {
+                        x['02']++
+                    }
+                    x.speler2_wins++
+                }
+            });
+        })
+
+        let stats_array = [stats.latest, stats.earlier, stats.total, ]
+        let rows = d3.select('table#overzicht tbody').selectAll('tr').data(stats_array);
+
+        let tr = rows.enter().append('tr')
+        tr.append('td').classed('comp', true).text(function(d) { return d.comp; })
+        tr.append('td').text(function(d) { return d.speler1_lollies; })
+        tr.append('td').text(function(d) { return d.speler1_finishes.substr(1); })
+        tr.append('td').text(function(d) { return d.speler1_180s; })
+        tr.append('td').text(function(d) { return d['20']; })
+        tr.append('td').text(function(d) { return d['21']; })
+        tr.append('td').text(function(d) { return d.speler1_wins + ' - ' + d.speler2_wins; })
+        tr.append('td').text(function(d) { return d['12']; })
+        tr.append('td').text(function(d) { return d['02']; })
+        tr.append('td').text(function(d) { return d.speler2_180s; })
+        tr.append('td').text(function(d) { return d.speler2_finishes.substr(1); })
+        tr.append('td').text(function(d) { return d.speler2_lollies; })
+
+
+    }
+
+    dartsapp.load_data(draw_page, { 'spelers': [speler1], })
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>overzicht speler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="darts.css">
+    <style>
+    table#stats th,
+    td {
+        text-align: center;
+    }
+
+    td.comp {
+        text-align: right;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <a href="index.html">&larr; overzicht</a>
+        <h1 id="title">speler</h1>
+        <div class="row">
+            <div class="col-lg-6">
+                <h2>punten</h2>
+                <svg id="punten" class="chart"></svg>
+            </div>
+            <div class="col-lg-6">
+                <h2>rating</h2>
+                <svg id="rating" class="chart"></svg>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <h2>stats</h2>
+                <table id="stats" class="table table-hover table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>gespeeld</th>
+                            <th colspan="2">gewonnen</th>
+                            <th colspan="2">verloren</th>
+                            <th>180s</th>
+                            <th>100+</th>
+                            <th>lollies</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>2-0</th>
+                            <th>2-1</th>
+                            <th>1-2</th>
+                            <th>0-2</th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <h2>per tegenstander</h2>
+                <table id="tegenstanders" class="table table-hover table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th colspan="4" id="lastseason">laatste 12 maanden</th>
+                            <th colspan="4">vanaf 2016</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th>gespeeld</th>
+                            <th>gewonnen</th>
+                            <th>verloren</th>
+                            <th>rating</th>
+                            <th>aantal</th>
+                            <th>gewonnen</th>
+                            <th>verloren</th>
+                            <th>rating</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <a id="speler_wedstrijden" href="#">Lijst met wedstrijden</a>
+            </div>
+        </div>
+    </div>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="./bbdataviz.js"></script>
+    <script src="./dartsapp.js"></script>
+    <script>
+    var puntenchart;
+    var ratingchart;
+    let p = bbdataviz.url_params();
+    let s = p['speler'];
+    d3.select('h1#title').text(s)
+    d3.select('a#speler_wedstrijden').attr('href', 'speler_wedstrijden.html?speler=' + s)
+
+    let draw_page = function() {
+        let games = dartsapp.data.spelers[p['speler']]['games'];
+
+        let per_tegenstander = {}
+        let yearago = new Date();
+        // in deze context doen we niet moeilijk over schrikkeljaren
+        yearago.setDate(yearago.getDate() - 365);
+
+        let seasons = [];
+        dartsapp.data.spelers[p['speler']]['avonden'].forEach(function(a) {
+            if (!seasons.includes(a.comp)) {
+                seasons.push(a.comp);
+            }
+        })
+        seasons.sort().reverse();
+        let lastseason = seasons[0];
+        let stats_row = {
+            "games": 0,
+            "180s": 0,
+            "finishes": '',
+            "lollies": 0,
+            "wins": 0,
+            "losses": 0,
+            "20": 0,
+            "21": 0,
+            "12": 0,
+            "02": 0,
+        }
+
+        let stats = {
+            'total': JSON.parse(JSON.stringify(stats_row)),
+            'latest': JSON.parse(JSON.stringify(stats_row)),
+            'earlier': JSON.parse(JSON.stringify(stats_row)),
+        }
+
+        stats.total.comp = 'totaal';
+        stats.latest.comp = lastseason.substr(-9);
+        stats.earlier.comp = 'eerder';
+
+
+        d3.select('th#lastseason').text('Seizoen ' + lastseason.substr(-9));
+
+        for (let i in games) {
+            let game = games[i]
+            let game_speler = 2
+            let game_tegenstander = 1
+            if (game['speler1_naam'] == s) {
+                game_speler = 1
+                game_tegenstander = 2
+            }
+
+            let tegenstander_naam = game['speler' + game_tegenstander + '_naam']
+            if (!(tegenstander_naam in per_tegenstander)) {
+                per_tegenstander[tegenstander_naam] = {
+                    "games": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "rating_adj": 0,
+                    "games_season": 0,
+                    "wins_season": 0,
+                    "losses_season": 0,
+                    "rating_adj_season": 0,
+                }
+            }
+
+            let ya = game.comp == lastseason;
+            per_tegenstander[tegenstander_naam]['games']++
+            per_tegenstander[tegenstander_naam]['rating_adj'] += game['speler_rating_adj']
+            if (ya) {
+                per_tegenstander[tegenstander_naam]['games_season']++
+                per_tegenstander[tegenstander_naam]['rating_adj_season'] += game['speler_rating_adj']
+            }
+
+            if (game['speler' + game_speler + '_legs'] < game['speler' + game_tegenstander + '_legs']) {
+                per_tegenstander[tegenstander_naam]['losses']++
+                if (ya) {
+                    per_tegenstander[tegenstander_naam]['losses_season']++
+                }
+            } else {
+                per_tegenstander[tegenstander_naam]['wins']++
+                if (ya) {
+                    per_tegenstander[tegenstander_naam]['wins_season']++
+                }
+            }
+
+            let sad = ['total']
+            if (game.comp == lastseason) {
+                sad.push('latest')
+            } else {
+                sad.push('earlier')
+            }
+
+            sad.forEach(function(s) {
+                let x = stats[s]
+                x["games"]++;
+                x["180s"] += (game['speler' + game_speler + '_180s'] || 0)
+                x["lollies"] += (game['speler' + game_speler + '_lollies'] || 0)
+                if (game['speler' + game_speler + '_finishes'] != 0) { x.finishes += ',' + game['speler' + game_speler + '_finishes']; }
+
+                if (game['speler' + game_speler + '_legs'] == 2) {
+                    x.wins++;
+                    if (game['speler' + game_tegenstander + '_legs'] == 1) {
+                        x['21']++
+                    } else {
+                        x['20']++
+                    }
+                } else {
+                    x.losses++;
+                    if (game['speler' + game_speler + '_legs'] == 1) {
+                        x['12']++
+                    } else {
+                        x['02']++
+                    }
+                }
+
+            });
+
+        }
+
+        let sadf = ['total', 'earlier', 'latest'];
+        sadf.forEach(function(s) {
+            let x = stats[s]
+            let f = x['finishes'].split(',').sort().reverse().join(', ');
+            x['finishes'] = f.substr(0, f.length - 2);
+        })
+
+        let stats_array = [stats.latest, stats.earlier, stats.total, ]
+        let rows_stats = d3.select('table#stats tbody').selectAll('tr').data(stats_array);
+        let tr = rows_stats.enter().append('tr')
+        tr.append('td').classed('comp', true).text(function(d) { return d.comp; })
+        tr.append('td').text(function(d) { return d.games; })
+        tr.append('td').text(function(d) { return d['20']; })
+        tr.append('td').text(function(d) { return d['21']; })
+        tr.append('td').text(function(d) { return d['12']; })
+        tr.append('td').text(function(d) { return d['02']; })
+        tr.append('td').text(function(d) { return d['180s']; })
+        tr.append('td').text(function(d) { return d['finishes']; })
+        tr.append('td').text(function(d) { return d['lollies']; })
+
+        let pt = d3.entries(per_tegenstander)
+            .sort(function(a, b) {
+                return (b.value.games_season - a.value.games_season) * 1000 + (b.value.games - a.value.games);
+            });
+
+        let ptrows = d3.select('table#tegenstanders').select('tbody').selectAll('tr')
+            .data(pt, function(d) { return d.key });
+        let newptrows = ptrows.enter().append('tr')
+        newptrows.append('td')
+            .append('a')
+            .attr('href', function(d) {
+                return 'head2head.html?speler=' + s + '&opponent=' + d["key"]
+            })
+            .text(function(d) { return d["key"] })
+        newptrows.append('td').text(function(d) { return d["value"]["games_season"] })
+        newptrows.append('td').text(function(d) { return d["value"]["wins_season"] })
+        newptrows.append('td').text(function(d) { return d["value"]["losses_season"] })
+        newptrows.append('td').text(function(d) { return d["value"]["rating_adj_season"] })
+        newptrows.append('td').text(function(d) { return d["value"]["games"] })
+        newptrows.append('td').text(function(d) { return d["value"]["wins"] })
+        newptrows.append('td').text(function(d) { return d["value"]["losses"] })
+        newptrows.append('td').text(function(d) { return d["value"]["rating_adj"] })
+
+        // displayvolgorde
+        games.sort(function(a, b) {
+            return b.game_order - a.game_order
+        })
+        let gamerows = d3.select('table#games').select('tbody').selectAll('tr')
+            .data(games, function(d) { return d.game_id });
+        let newrows = gamerows.enter().append('tr')
+            .classed('win', function(d) {
+                return (
+                    (d.speler1_naam == s && d.speler1_legs > d.speler2_legs) ||
+                    (d.speler2_naam == s && d.speler2_legs > d.speler1_legs))
+
+            })
+            .classed('loss', function(d) {
+                return (
+                    (d.speler2_naam == s && d.speler1_legs > d.speler2_legs) ||
+                    (d.speler1_naam == s && d.speler2_legs > d.speler1_legs))
+            })
+
+        newrows.append('td').text(function(d) { return d.datum })
+        newrows.append('td')
+            .classed('speler1', true)
+            .text(function(d) { return d.speler1_naam })
+        newrows.append('td')
+            .classed('speler1', true)
+            .text(function(d) { return d.speler1_legs })
+        newrows.append('td')
+            .classed('center', true)
+            .text(' - ')
+        newrows.append('td').text(function(d) { return d.speler2_legs })
+        newrows.append('td').text(function(d) { return d.speler2_naam })
+        newrows.append('td').text(function(d) { return d.speler_rating + ' (' + d.speler_rating_adj + ')' })
+        newrows.append('td')
+            .append('a')
+            .attr('href', function(d) {
+                return 'seizoen.html?seizoen=' + d.comp
+            })
+            .text(function(d) { return d.comp })
+
+        let avonden = dartsapp.data.spelers[p['speler']]['avonden'];
+        let max_season_points = avonden.reduce(function(a, b) {
+            return Math.max(
+                typeof(a) != 'number' ? a.comp_punten : a,
+                typeof(b) != 'number' ? b.comp_punten : b,
+            );
+        })
+        let max_rating = avonden.reduce(function(a, b) {
+            return Math.max(
+                typeof(a) != 'number' ? a.rating : a,
+                typeof(b) != 'number' ? b.rating : b,
+            );
+        })
+        let min_date = new Date(avonden.reduce(function(a, b) {
+            return Math.min(a.timestamp || a, b.timestamp || b);
+        }))
+        let max_date = new Date(avonden.reduce(function(a, b) {
+            return Math.max(a.timestamp || a, b.timestamp || b);
+        }))
+        let avonden_per_season = d3.nest()
+            .key(function(d) { return d.comp })
+            .entries(avonden)
+
+        puntenchart = new bbdataviz.xyChart(d3.select('svg#punten'));
+        ratingchart = new bbdataviz.xyChart(d3.select('svg#rating'));
+
+        let y_scale_punten = d3.scaleLinear()
+            .domain([0, max_season_points])
+            .range([puntenchart.c_height, 0])
+        puntenchart.y_axis.call(
+            d3.axisLeft(y_scale_punten)
+            .tickSize(-puntenchart.c_width)
+        )
+
+        let y_scale_rating = d3.scaleLinear()
+            .domain([1000, max_rating])
+            .range([ratingchart.c_height, 0])
+        ratingchart.y_axis.call(
+            d3.axisLeft(y_scale_rating)
+            .tickSize(-ratingchart.c_width)
+        )
+
+        let x_scale = d3.scaleTime()
+            .domain([min_date, max_date])
+            .range([0, puntenchart.c_width])
+
+        puntenchart.x_axis.call(
+            d3.axisBottom(x_scale.nice())
+            .tickFormat(function(date) {
+                if (d3.timeYear(date) < date) {
+                    return d3.timeFormat('%b')(date);
+                } else {
+                    return d3.timeFormat('%Y')(date);
+                }
+            })
+        )
+
+        ratingchart.x_axis.call(
+            d3.axisBottom(x_scale.nice())
+            .tickFormat(function(date) {
+                if (d3.timeYear(date) < date) {
+                    return d3.timeFormat('%b')(date);
+                } else {
+                    return d3.timeFormat('%Y')(date);
+                }
+            })
+
+        )
+
+        let line_punten = d3.line()
+            .curve(d3.curveLinear)
+            .x(function(d) {
+                return x_scale(d.date)
+            })
+            .y(function(d) {
+                return y_scale_punten(d.comp_punten)
+            })
+
+        let punten_lines = puntenchart.content.selectAll('path.line')
+            .data(avonden_per_season)
+            .enter()
+            .append('path')
+            .classed('line', true)
+            .classed('punten', true)
+            .attr("d", function(d) {
+                return line_punten(d.values);
+            });
+
+        let zero;
+        let line_rating = d3.line()
+            .curve(d3.curveLinear)
+            .x(function(d) {
+                return x_scale(d.date)
+            })
+            .y(function(d) {
+                if (d.rating == 0) {
+                    d.rating = zero
+                } else {
+                    zero = d.rating
+                }
+                return y_scale_rating(d.rating)
+            })
+
+        ratingchart.content
+            .append('path')
+            .classed('line', true)
+            .classed('rating_raw', true)
+            .attr("d", function(d) {
+                return line_rating(avonden);
+            });
+
+        line_rating.curve(d3.curveBundle.beta(0.7))
+        ratingchart.content
+            .append('path')
+            .classed('line', true)
+            .classed('rating_smooth', true)
+            .attr("d", function(d) {
+                return line_rating(avonden);
+            });
+    }
+
+    dartsapp.load_data(draw_page, { 'spelers': [s], })
+    </script>
+</body>
+
+</html>

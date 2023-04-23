@@ -1,0 +1,51 @@
+td.speler1,
+th.speler1 {
+    text-align: right;
+}
+
+.win {
+    background-color: #efe;
+}
+
+.loss {
+    background-color: #fee;
+}
+
+td.center {
+    text-align: center;
+}
+
+td.datum {
+    white-space: nowrap;
+}
+
+svg.chart {
+    width: 100%;
+    height: 20em;
+}
+
+g.xaxis,
+g.yaxis {
+    shape-rendering: crispEdges;
+}
+
+g.yaxis path.domain {
+    stroke-opacity: 0;
+}
+
+path.line {
+    fill: none;
+    stroke: black;
+    stroke-width: 1.5;
+}
+
+path.rating_raw {
+    stroke: gray;
+    opacity: 0.2
+}
+
+g.tick line {
+    stroke: lightgrey;
+    stroke-opacity: 0.3;
+    shape-rendering: crispEdges;
+}

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>loting</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" type="text/css" href="../darts.css" />
+    <style>
+      th.selector {
+        width: 26px;
+      }
+
+      label.switch {
+        margin-bottom: 0;
+      }
+
+      table#wedstrijdschema tbody tr td {
+        font-weight: bold;
+        vertical-align: middle;
+      }
+
+      td.smaller {
+        font-size: 66%;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: 0.4s;
+        transition: 0.4s;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: 0.4s;
+        transition: 0.4s;
+      }
+
+      input:checked + .slider {
+        background-color: #007bff;
+      }
+
+      input:focus + .slider {
+        box-shadow: 0 0 1px #007bff;
+      }
+
+      input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(26px);
+      }
+
+      /* Rounded sliders */
+      .slider {
+        border-radius: 34px;
+      }
+
+      .slider:before {
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container-fluid">
+      <a href="../index.html">&larr; overzicht</a>
+      <a href="index.html">&larr; tools</a>
+      <h1 id="title">Games balancer</h1>
+      <div class="row">
+        <div class="col-sm-2">
+          <h2>Spelers</h2>
+          <table id="spelers" class="table table-hover table-sm table-striped">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="selector"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <table
+            id="anderespelers"
+            class="table table-hover table-sm table-striped"
+          >
+            <thead>
+              <tr>
+                <th></th>
+                <th class="selector"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="col-sm-10">
+          <h2>
+            <button class="btn btn-primary" onclick="startloting();">
+              Loting &rarr;
+            </button>
+            Wedstrijdschema
+          </h2>
+          <table id="wedstrijdschema" class="table table-sm">
+            <thead>
+              <tr>
+                <th>Ronde</th>
+                <th>Speler 1</th>
+                <th>Speler 2</th>
+                <th>Schrijver</th>
+                <th>Bord</th>
+                <th>S1 Legs</th>
+                <th>S2 Legs</th>
+                <th>S1 Lolly's</th>
+                <th>S2 Lolly's</th>
+                <th>S1 180s</th>
+                <th>S2 180s</th>
+                <th>S1 Finish</th>
+                <th>S2 Finish</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="../bbdataviz.js"></script>
+    <script src="../dartsapp.js"></script>
+    <script>
+      let c;
+      let spelersmatrix = {};
+      let selected_spelers = [];
+
+      let load_competition = function () {
+        c = dartsapp["data"]["index"]["competitions"].sort().reverse()[0];
+        dartsapp.load_data(draw_page, { seizoenen: [c] });
+      };
+
+      let add_to_spelersmatrix = function (speler, opp) {
+        if (!spelersmatrix[speler]) {
+          spelersmatrix[speler] = {};
+        }
+        if (!spelersmatrix[speler][opp]) {
+          spelersmatrix[speler][opp] = 0;
+        }
+        spelersmatrix[speler][opp]++;
+      };
+
+      let get_game_number = function (speler1, speler2) {
+        if (!spelersmatrix[speler1] || !spelersmatrix[speler1][speler2]) {
+          return 0;
+        } else {
+          return spelersmatrix[speler1][speler2];
+        }
+      };
+
+      let find_least_played = function (speler, lijstje) {
+        // vind de speler uit het lijstje dat het minst tegen speler speelde
+
+        let md = spelersmatrix[speler];
+        let aantallen = [];
+
+        lijstje.forEach(function (s) {
+          aantallen.push({
+            speler: s,
+            aantal: md[s],
+          });
+        });
+
+        // shuffle, om gelijke aantallen. gaat uit van stable sort.
+        let shuffled = [];
+        while (aantallen.length > 0) {
+          shuffled.push(
+            aantallen.splice(Math.floor(Math.random() * aantallen.length), 1)[0]
+          );
+        }
+
+        shuffled.sort(function (a, b) {
+          return a.aantal - b.aantal;
+        });
+
+        // geeft het hele lijstje, gesorteerd op aantal keer gespeeld.
+        return shuffled;
+      };
+
+      let generate_games = function () {
+        // clear table
+        d3.select("table#wedstrijdschema").select("tbody").remove();
+        let tbody = d3.select("table#wedstrijdschema").append("tbody");
+
+        if (selected_spelers.length < 5) {
+          return;
+        }
+
+        let wedstrijden = [];
+        let spelersindex = Array.from(Array(selected_spelers.length).keys());
+        let spelers = [];
+        while (spelersindex.length > 0) {
+          let draw = spelersindex.splice(
+            Math.floor(Math.random() * spelersindex.length),
+            1
+          )[0];
+          spelers.push(selected_spelers[draw]);
+        }
+
+        for (let i = 1; i <= 2; i++) {
+          for (let j = 0; j < spelers.length; j++) {
+            // loop spelers langs en wijs toe
+            let oi = j + i;
+            if (oi >= spelers.length) {
+              oi -= spelers.length;
+            }
+            let wedstrijd = {
+              speler1: spelers[j],
+              speler2: spelers[oi],
+              rep: get_game_number(spelers[j], spelers[oi]),
+              schrijver: "",
+              ronde: 0,
+            };
+            wedstrijden.push(wedstrijd);
+          }
+        }
+
+        // ik kan natuurlijk detecteren waneer een optimum is bereikt.
+        // Dat is veel werk, premature optimization wat mij betreft.
+        aantal_pogingen = 500;
+
+        let ballenbak = [];
+
+        for (let poging = 1; poging < aantal_pogingen; poging++) {
+          // optimize: probeer het aantal reps zo laag mogelijk te krijgen
+          // vind de wedstrijd met het hoogste aantal reps.
+          wedstrijden.sort(function (a, b) {
+            return b.rep - a.rep;
+          });
+          let primair_game = wedstrijden[0];
+
+          let primair = 0;
+          let compare = 0;
+          let replace = {
+            optie1: undefined,
+            optie2: undefined,
+          };
+
+          for (let i = 1; i < wedstrijden.length; i++) {
+            // loop de andere wedstrijden na om te zoeken naar een combinatie met
+            // een lager aantal reps.
+            let compare_game = wedstrijden[i];
+            let best = primair_game.rep + compare_game.rep;
+
+            //switch players to try;
+
+            // let ()
+
+            let optie1 = {
+              speler1: primair_game.speler1,
+              speler2: compare_game.speler2,
+              rep: get_game_number(primair_game.speler1, compare_game.speler2),
+              schrijver: "",
+              ronde: 0,
+            };
+            let optie2 = {
+              speler1: compare_game.speler1,
+              speler2: primair_game.speler2,
+              rep: get_game_number(compare_game.speler1, primair_game.speler2),
+              schrijver: "",
+              ronde: 0,
+            };
+
+            // voorwaarde niemand speelt tegen zichzelf
+            if (
+              optie1.speler1 == optie1.speler2 ||
+              optie2.speler1 == optie2.speler2
+            ) {
+              continue;
+            }
+
+            // voorwaarde wedstrijd is uniek op de avond, ook niet omgekeerd.
+
+            let cmp_array = JSON.parse(JSON.stringify(wedstrijden)).concat(
+              JSON.parse(JSON.stringify(ballenbak))
+            );
+
+            let uniek = true;
+            for (let j = 0; j < cmp_array.length; j++) {
+              let cgame = cmp_array[j];
+
+              if (
+                cgame.speler1 == optie1.speler1 &&
+                cgame.speler2 == optie1.speler2
+              ) {
+                uniek = false;
+              }
+              if (
+                cgame.speler2 == optie1.speler1 &&
+                cgame.speler1 == optie1.speler2
+              ) {
+                uniek = false;
+              }
+              if (
+                cgame.speler1 == optie2.speler1 &&
+                cgame.speler2 == optie2.speler2
+              ) {
+                uniek = false;
+              }
+              if (
+                cgame.speler2 == optie2.speler1 &&
+                cgame.speler1 == optie2.speler2
+              ) {
+                uniek = false;
+              }
+
+              if (!uniek) {
+                break;
+              }
+            }
+
+            if (!uniek) {
+              continue;
+            }
+
+            if (best > optie1.rep + optie2.rep) {
+              compare = i;
+              replace.optie1 = optie1;
+              replace.optie2 = optie2;
+            }
+          }
+
+          if (compare) {
+            // betere combo gevonden. Gebruik en probeer opnieuw;
+            wedstrijden[primair] = replace.optie1;
+            wedstrijden[compare] = replace.optie2;
+          } else {
+            ballenbak.push(wedstrijden.splice(0, 1)[0]);
+          }
+
+          if (wedstrijden.length < 3) {
+            wedstrijden = wedstrijden.concat(ballenbak);
+            ballenbak = [];
+          }
+        }
+        wedstrijden = wedstrijden.concat(ballenbak);
+
+        // zodanig sorteren dat gelijkmatig verspreid over de avond
+        let sort_tries = 100;
+        let best_wedstrijden;
+        let best_delay = 100;
+
+        while (sort_tries > 0) {
+          sort_tries--;
+          let volgorde = [];
+          ballenbak = [];
+          let ronde = 0;
+
+          let bepaal_distance = function (game) {
+            let ds1 = 999;
+            let ds2 = 999;
+            for (let i = 0; i < volgorde.length; i++) {
+              // loop reeds geplaatste wedstrijden van onder naar boven
+              // door. Bepaal de afstand voor beide spelers
+              let cgame = volgorde[i];
+              if (
+                game.speler1 == cgame.speler1 ||
+                game.speler1 == cgame.speler2
+              ) {
+                ds1 = Math.min(ds1, i);
+              }
+              if (
+                game.speler2 == cgame.speler1 ||
+                game.speler2 == cgame.speler2
+              ) {
+                ds2 = Math.min(ds2, i);
+              }
+            }
+            return [ds1, ds2];
+          };
+
+          let count = 0;
+          let min_distance = Math.ceil(selected_spelers.length / 2) + 1;
+
+          while (wedstrijden.length > 0 || ballenbak.length > 0) {
+            let candidate;
+
+            if (wedstrijden.length == 0) {
+              wedstrijden = ballenbak;
+              ballenbak = [];
+              if (count) {
+                ronde++;
+                min_distance++;
+                count = 0;
+              } else {
+                min_distance--;
+              }
+            }
+
+            let game = wedstrijden.shift();
+            game.ronde = ronde;
+
+            let [ds1, ds2] = bepaal_distance(game);
+
+            if (ds1 > min_distance && ds2 > min_distance) {
+              count++;
+              volgorde.unshift(game);
+            } else {
+              ballenbak.push(game);
+            }
+          }
+
+          wedstrijden = volgorde.reverse();
+
+          // todo: check of mensen niet te lang hoeven wachten op hun eerste
+          // partij
+          let check_start = {};
+          let max_delay = 0;
+          for (let i = 0; i < wedstrijden.length; i++) {
+            let game = wedstrijden[i];
+            if (!check_start[game.speler1]) {
+              check_start[game.speler1] = true;
+              max_delay = i;
+            }
+            if (!check_start[game.speler2]) {
+              check_start[game.speler2] = true;
+              max_delay = i;
+            }
+          }
+
+          if (max_delay < best_delay) {
+            best_delay = max_delay;
+            best_wedstrijden = JSON.parse(JSON.stringify(wedstrijden)); //clone
+          }
+
+          if (best_delay + 1 == Math.ceil(selected_spelers.length / 2)) {
+            break;
+          }
+
+          wedstrijden.push(wedstrijden.shift());
+        }
+
+        wedstrijden = best_wedstrijden;
+
+        // schrijvers
+        let s0 = wedstrijden[0].speler1;
+        for (let i = 0; i < wedstrijden.length; i++) {
+          wedstrijden[i].schrijver = wedstrijden[i + 1]
+            ? wedstrijden[i + 1]["speler1"]
+            : s0;
+        }
+
+        let tr = d3
+          .select("table#wedstrijdschema tbody")
+          .selectAll("tr")
+          .data(wedstrijden);
+
+        let newtr = tr.enter().append("tr");
+        newtr.append("td").text(function (d) {
+          return d.ronde;
+        });
+        newtr.append("td").text(function (d) {
+          return d.speler1;
+        });
+        newtr.append("td").text(function (d) {
+          return d.speler2;
+        });
+        newtr
+          .append("td")
+          .classed("smaller", true)
+          .text(function (d) {
+            return d.schrijver;
+          });
+
+        d3.select("table#wedstrijdschema tbody").append("tr");
+      };
+
+      let draw_page = function () {
+        // bouw matrix spelers
+        let games = dartsapp["data"]["competitions"][c]["games"];
+
+        for (let i = 0; i < games.length; i++) {
+          let game = games[i];
+          add_to_spelersmatrix(game["speler1_naam"], game["speler2_naam"]);
+          add_to_spelersmatrix(game["speler2_naam"], game["speler1_naam"]);
+        }
+
+        // de keys van de spelersmatrix zijn de spelers in het systeem
+        let spelers = Object.keys(spelersmatrix).sort();
+        let andere_spelers = dartsapp.data["index"]["spelers"].slice().sort();
+
+        spelers.forEach(function (s) {
+          let i = andere_spelers.indexOf(s);
+          andere_spelers.splice(i, 1);
+        });
+
+        andere_spelers = [
+          "Nieuwe speler 1",
+          "Nieuwe speler 2",
+          "Nieuwe speler 3",
+        ].concat(andere_spelers);
+
+        let put_array_in_table = function (s_array, tableid) {
+          let spelers_rows = d3
+            .select("table#" + tableid)
+            .select("tbody")
+            .selectAll("tr")
+            .data(s_array);
+
+          let new_spelers_rows = spelers_rows.enter().append("tr");
+          new_spelers_rows.append("td").text(function (d) {
+            return d;
+          });
+          let l = new_spelers_rows
+            .append("td")
+            .append("label")
+            .attr("class", "switch");
+          l.append("input")
+            .attr("type", "checkbox")
+            .attr("id", function (d) {
+              return d;
+            })
+            .on("change", function (speler) {
+              if (this.checked) {
+                selected_spelers.push(speler);
+                selected_spelers.sort();
+              } else {
+                let i = selected_spelers.indexOf(speler);
+                selected_spelers.splice(i, 1);
+              }
+            });
+          l.append("span").attr("class", "slider");
+        };
+
+        put_array_in_table(spelers, "spelers");
+        put_array_in_table(andere_spelers, "anderespelers");
+      };
+
+      let startloting = function () {
+        generate_games();
+        CopyToClipboard("wedstrijdschema");
+      };
+
+      // van https://stackoverflow.com/questions/48554043/javascript-copy-element-to-clipboard-with-all-styles
+      function CopyToClipboard(element) {
+        var doc = document,
+          text = doc.getElementById(element),
+          range,
+          selection;
+
+        if (doc.body.createTextRange) {
+          range = doc.body.createTextRange();
+          range.moveToElementText(text);
+          range.select();
+        } else if (window.getSelection) {
+          selection = window.getSelection();
+          range = doc.createRange();
+          range.selectNodeContents(text);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        document.execCommand("copy");
+        window.getSelection().removeAllRanges();
+        // document.getElementById("btn").value = "Copied";
+      }
+
+      dartsapp.root = "../";
+      dartsapp.load_data(load_competition, { index: true });
+
+      // voor test, scheelt klikken
+
+      // window.setTimeout(function() {
+      //     d3.select('input#Andor').node().click()
+      //     d3.select('input#Bas').node().click()
+      //     d3.select('input#Christa').node().click()
+      //     d3.select('input#Elbert').node().click()
+      //     d3.select('input#Jari').node().click()
+      //     d3.select('input#Johan').node().click()
+      //     d3.select('input#Menno').node().click()
+      //     d3.select('input#Henri').node().click()
+      //     d3.select('input#Pietra').node().click()
+      //     startloting();
+      // }, 1500);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>dir</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <h1>overzicht</h1>
+        <div class="row">
+            <div class="col-lg-6">
+                <h2>seizoenen</h2>
+                <table id="seizoenen">
+                    <tbody> </tbody>
+                </table>
+            </div>
+            <div class="col-lg-6">
+                <h2>spelers</h2>
+                <table id="spelers">
+                    <tbody> </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="./bbdataviz.js"></script>
+    <script src="./dartsapp.js"></script>
+    <script>
+    let draw_page = function() {
+        let seizoenrows = d3.select('table#seizoenen').select('tbody').selectAll('tr')
+            .data(dartsapp.data.index.competitions);
+        let newseizoenrows = seizoenrows.enter()
+            .append('tr')
+        newseizoenrows.append('td')
+        .append('a')
+        .attr('href', function(d) {
+            return 'seizoen.html?seizoen=' + d;
+        })
+        .text(function(d) { return d; })
+
+        let spelerrows = d3.select('table#spelers').select('tbody').selectAll('tr')
+            .data(dartsapp.data.index.spelers);
+        let newspelerrows = spelerrows.enter()
+            .append('tr')
+        newspelerrows.append('td')
+        .append('a')
+        .attr('href', function(d) {
+            return 'speler.html?speler=' + d;
+        })
+        .text(function(d) { return d; })
+    }
+
+    dartsapp.load_data(draw_page, {'index':true,})
+    </script>
+</body>
+
+</html>

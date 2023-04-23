@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>overzicht seizoen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="darts.css">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <a href="index.html">&larr; overzicht</a>
+        <h1 id="title">seizoen</h1>
+        <div class="row">
+            <div class="col-lg-12">
+                <h2>Stand</h2>
+                <table id="stand" class="table table-hover table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>speler</th>
+                            <th>punten</th>
+                            <th>aantal wedstrijden</th>
+                            <th>gemiddelde</th>
+                            <th>rating</th>
+                            <th>180s</th>
+                            <th>uitworpen</th>
+                            <th>lollies</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <a id="seizoen_wedstrijden" href="#">Lijst met wedstrijden</a>
+            </div>
+        </div>
+    </div>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="./bbdataviz.js"></script>
+    <script src="./dartsapp.js"></script>
+    <script>
+    var puntenchart;
+    var ratingchart;
+    let p = bbdataviz.url_params();
+    let s = p['seizoen'];
+    d3.select('h1#title').text(s)
+
+    d3.select('a#seizoen_wedstrijden').attr('href','seizoen_wedstrijden.html?seizoen=' + s)
+
+    let draw_page = function() {
+        // standings
+        let standings = dartsapp.data.competitions[s].standings;
+        standings.sort(function(a, b) {
+            return 10000 * (b.speler_punten - a.speler_punten) + a.speler_games - b.speler_games
+        })
+        let standrows = d3.select('table#stand').select('tbody').selectAll('tr')
+            .data(standings, function(d) { return d.speler_naam });
+
+        let standnewrows = standrows.enter().append('tr')
+        standnewrows.append('td')
+            .append('a')
+            .attr('href', function(d) { return 'speler.html?speler=' + d.speler_naam })
+            .text(function(d) { return d.speler_naam })
+        standnewrows.append('td').text(function(d) { return d.speler_punten })
+        standnewrows.append('td').text(function(d) { return d.speler_games })
+        standnewrows.append('td').text(function(d) { return (Math.round(100 * d.speler_punten / d.speler_games) / 100 + '0').substr(0, 4) })
+        standnewrows.append('td').text(function(d) { return d.rating })
+        standnewrows.append('td').text(function(d) { return d.speler_180s })
+        standnewrows.append('td').text(function(d) { return d.speler_finishes })
+        standnewrows.append('td').text(function(d) { return d.speler_lollies })
+
+      
+    }
+
+    dartsapp.load_data(draw_page, { 'seizoenen': [s], })
+    </script>
+</body>
+
+</html>

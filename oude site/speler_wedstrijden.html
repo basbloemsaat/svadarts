@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>overzicht speler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="darts.css">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <a href="index.html">&larr; overzicht</a>
+        <h1 id="title">speler</h1>
+        <div class="row">
+            <div class="col-lg-12">
+                <h2>wedstrijden</h2>
+                <table id="games" class="table table-hover table-sm">
+                    <thead>
+                        <th>datum</th>
+                        <th class="speler1">speler</th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th>speler</th>
+                        <th>elo rating</th>
+                        <th>seizoen</th>
+                    </thead>
+                    <tbody> </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="./bbdataviz.js"></script>
+    <script src="./dartsapp.js"></script>
+    <script>
+    var puntenchart;
+    var ratingchart;
+    let p = bbdataviz.url_params();
+    let s = p['speler'];
+    d3.select('h1#title').text(s)
+
+    let draw_page = function() {
+        let games = dartsapp.data.spelers[p['speler']]['games'];
+
+        let per_tegenstander = {}
+        let yearago = new Date();
+        // in deze context doen we niet moeilijk over schrikkeljaren
+        yearago.setDate(yearago.getDate() - 365);
+
+        let seasons = [];
+        dartsapp.data.spelers[p['speler']]['avonden'].forEach(function(a) {
+            if(!seasons.includes(a.comp)) {
+                seasons.push(a.comp);
+            }
+        })
+        seasons.sort().reverse();
+        let lastseason = seasons[0];
+
+        d3.select('th#lastseason').text('Seizoen ' + lastseason.substr(-9));
+
+        // displayvolgorde
+        games.sort(function(a, b) {
+            return b.game_order - a.game_order
+        })
+        let gamerows = d3.select('table#games').select('tbody').selectAll('tr')
+            .data(games, function(d) { return d.game_id });
+        let newrows = gamerows.enter().append('tr')
+            .classed('win', function(d) {
+                return (
+                    (d.speler1_naam == s && d.speler1_legs > d.speler2_legs) ||
+                    (d.speler2_naam == s && d.speler2_legs > d.speler1_legs))
+
+            })
+            .classed('loss', function(d) {
+                return (
+                    (d.speler2_naam == s && d.speler1_legs > d.speler2_legs) ||
+                    (d.speler1_naam == s && d.speler2_legs > d.speler1_legs))
+            })
+
+        newrows.append('td').text(function(d) { return d.datum })
+        newrows.append('td')
+            .classed('speler1', true)
+            .text(function(d) { return d.speler1_naam })
+        newrows.append('td')
+            .classed('speler1', true)
+            .text(function(d) { return d.speler1_legs })
+        newrows.append('td')
+            .classed('center', true)
+            .text(' - ')
+        newrows.append('td').text(function(d) { return d.speler2_legs })
+        newrows.append('td').text(function(d) { return d.speler2_naam })
+        newrows.append('td').text(function(d) { return d.speler_rating + ' (' + d.speler_rating_adj + ')' })
+        newrows.append('td')
+            .append('a')
+            .attr('href', function(d) {
+                return 'seizoen.html?seizoen=' + d.comp
+            })
+            .text(function(d) { return d.comp })
+
+        let avonden = dartsapp.data.spelers[p['speler']]['avonden'];
+        let max_season_points = avonden.reduce(function(a, b) {
+            return Math.max(
+                typeof(a) != 'number' ? a.comp_punten : a,
+                typeof(b) != 'number' ? b.comp_punten : b,
+            );
+        })
+        let max_rating = avonden.reduce(function(a, b) {
+            return Math.max(
+                typeof(a) != 'number' ? a.rating : a,
+                typeof(b) != 'number' ? b.rating : b,
+            );
+        })
+        let min_date = new Date(avonden.reduce(function(a, b) {
+            return Math.min(a.timestamp || a, b.timestamp || b);
+        }))
+        let max_date = new Date(avonden.reduce(function(a, b) {
+            return Math.max(a.timestamp || a, b.timestamp || b);
+        }))
+        let avonden_per_season = d3.nest()
+            .key(function(d) { return d.comp })
+            .entries(avonden)
+
+    }
+
+    dartsapp.load_data(draw_page, { 'spelers': [s], })
+    </script>
+</body>
+
+</html>
