@@ -10,7 +10,7 @@ import os
 import math
 
 
-C = 400
+C = 200
 KFACTOR = 24
 MIN_RATING = 1000
 START_RATING = 1100
@@ -268,8 +268,15 @@ def main(argv):
             axis=1,
         )
     )
-    print(games)
 
+    #save players to json
+    for player in players:
+        player_games = games[
+            (games["Player1"] == player) | (games["Player2"] == player)
+        ]
+        player_games.to_json(f"../docs/data/players/{player}.json", orient="records")
+
+    print(games)
     print(games.describe())
 
 
